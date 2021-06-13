@@ -73,4 +73,4 @@ sampctl package run
 
 ## Video Preview
 
-[![Watch the video](https://imgur.com/a/5otb28I)](https://streamable.com/2ocgdb)
+[![Watch the video](https://i.imgur.com/dBe2Xjr.png)](https://streamable.com/2ocgdb)
