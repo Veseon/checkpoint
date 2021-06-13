@@ -50,12 +50,12 @@ section.
 -->
 
 ```pawn
-bool:CheckPoint_IsValid(CheckPoint:checkpoint)
-CheckPoint:CheckPoint_Create(CheckPointObject:object, CheckPointMapIcon:mapicon, Float:minx, Float:miny, Float:maxx, Float:maxy, Float:z, Float:radius = DEFAULT_CHECK_POINT_RADIUS)
-bool:CheckPoint_Destroy(CheckPoint:checkpoint)
-bool:CheckPoint_ShowForPlayer(playerid, CheckPoint:checkpoint)
-bool:CheckPoint_HideForPlayer(playerid, CheckPoint:checkpoint)
-CheckPoint_OnPlayerEnter(playerid, CheckPoint:checkpoint)
+bool:CheckPoint_IsValid(CheckPoint:checkpoint);
+CheckPoint:CheckPoint_Create(CheckPointObject:object, CheckPointMapIcon:mapicon, Float:minx, Float:miny, Float:maxx, Float:maxy, Float:z, Float:radius = DEFAULT_CHECK_POINT_RADIUS);
+bool:CheckPoint_Destroy(CheckPoint:checkpoint);
+bool:CheckPoint_ShowForPlayer(playerid, CheckPoint:checkpoint);
+bool:CheckPoint_HideForPlayer(playerid, CheckPoint:checkpoint);
+CheckPoint_OnPlayerEnter(playerid, CheckPoint:checkpoint);
 ```
 
 ## Testing
