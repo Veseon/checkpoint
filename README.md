@@ -70,3 +70,7 @@ To test, simply run the package:
 ```bash
 sampctl package run
 ```
+
+## Video Preview
+
+[![Watch the video](https://imgur.com/a/5otb28I)](https://streamable.com/2ocgdb)
