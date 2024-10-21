@@ -10,7 +10,7 @@
 #include <list>
 #include <streamer>
 
-//----------------------------------------------------------
+//---------------------------------------------------------------------------------------------------
 
 const CheckPoint:INVALID_CHECK_POINT = CheckPoint:0;
 
@@ -39,7 +39,7 @@ const CheckPoint:INVALID_CHECK_POINT = CheckPoint:0;
     };
 #endif
 
-static List:cp@CheckPointList;
+static cp@CheckPointExtraId;
 static List:cp@PlayerCheckPointList[MAX_PLAYERS];
 
 //----------------------------------------------------------
@@ -50,7 +50,7 @@ static stock cp@CheckPoint_SetExtraId(STREAMER_TAG_AREA:area, const STREAMER_TAG
     data[0] = _:object[0];
     data[1] = _:object[1];
     data[2] = _:mapicon;
-    Streamer_SetArrayData(STREAMER_TYPE_AREA, area, E_STREAMER_EXTRA_ID, data, sizeof data);
+    Streamer_SetArrayData(STREAMER_TYPE_AREA, area, cp@CheckPointExtraId, data, sizeof data);
 }
 
 //----------------------------------------------------------
@@ -58,18 +58,38 @@ static stock cp@CheckPoint_SetExtraId(STREAMER_TAG_AREA:area, const STREAMER_TAG
 static stock cp@CheckPoint_GetExtraId(STREAMER_TAG_AREA:area, STREAMER_TAG_OBJECT:object[2], &STREAMER_TAG_MAP_ICON:mapicon)
 {
     new data[3];
-    Streamer_GetArrayData(STREAMER_TYPE_AREA, area, E_STREAMER_EXTRA_ID, data, sizeof data);
+    Streamer_GetArrayData(STREAMER_TYPE_AREA, area, cp@CheckPointExtraId, data, sizeof data);
     object[0] = STREAMER_TAG_OBJECT:data[0];
     object[1] = STREAMER_TAG_OBJECT:data[1];
     mapicon = STREAMER_TAG_MAP_ICON:data[2];
-    return true;
 }
 
 //----------------------------------------------------------
 
 stock bool:CheckPoint_IsValid(CheckPoint:checkpoint)
 {
-    return bool:LIST_contains_val(cp@CheckPointList, _:checkpoint);
+    if(!IsValidDynamicArea(STREAMER_TAG_AREA:checkpoint))
+        return false;
+
+    if(Streamer_IncludeFileVersion > 0x295)
+    {
+        return bool:Streamer_HasArrayData(STREAMER_TYPE_AREA, STREAMER_TAG_AREA:checkpoint, cp@CheckPointExtraId);
+    }
+
+    return bool:Streamer_GetArrayDataLength(STREAMER_TYPE_AREA, STREAMER_TAG_AREA:checkpoint, cp@CheckPointExtraId);
+}
+
+//----------------------------------------------------------
+
+stock bool:CheckPoint_IsShownForPlayer(playerid, CheckPoint:checkpoint)
+{
+    if(!IsValidDynamicArea(STREAMER_TAG_AREA:checkpoint))
+        return false;
+
+    if(!Streamer_IsInArrayData(STREAMER_TYPE_AREA, STREAMER_TAG_AREA:checkpoint, E_STREAMER_PLAYER_ID, playerid))
+        return false;
+
+    return true;
 }
 
 //----------------------------------------------------------
@@ -92,7 +112,6 @@ stock CheckPoint:CheckPoint_Create(CheckPointObject:object, CheckPointMapIcon:ma
     objectId[1] = CreateDynamicObject(_:object, maxx, maxy, z, 0.0, 0.0, 0.0, .playerid = INVALID_PLAYER_ID);
     mapIcon = CreateDynamicMapIcon((minx + maxx) / 2.0, (miny + maxy) / 2.0, z, _:mapicon, (mapicon == CheckPoint ? 0xFF0000FF : -1), .playerid = INVALID_PLAYER_ID);
     cp@CheckPoint_SetExtraId(area, objectId, mapIcon);
-    LIST_push_back_val(cp@CheckPointList, _:area);
     return CheckPoint:area;
 }
 
@@ -100,10 +119,9 @@ stock CheckPoint:CheckPoint_Create(CheckPointObject:object, CheckPointMapIcon:ma
 
 stock bool:CheckPoint_Destroy(CheckPoint:checkpoint)
 {
-    if(!LIST_contains_val(cp@CheckPointList, _:checkpoint))
-    {
+    if(!CheckPoint_IsValid(checkpoint))
         return false;
-    }
+
     new STREAMER_TAG_AREA:area = STREAMER_TAG_AREA:checkpoint, STREAMER_TAG_OBJECT:object[2], STREAMER_TAG_MAP_ICON:mapIcon, players[MAX_PLAYERS] = {INVALID_PLAYER_ID, ...};
     Streamer_GetArrayData(STREAMER_TYPE_AREA, area, E_STREAMER_PLAYER_ID, players, sizeof players);
     for(new i; i < sizeof players; i++)
@@ -118,7 +136,6 @@ stock bool:CheckPoint_Destroy(CheckPoint:checkpoint)
     DestroyDynamicObject(object[0]);
     DestroyDynamicObject(object[1]);
     DestroyDynamicMapIcon(mapIcon);
-    LIST_remove_val(cp@CheckPointList, _:checkpoint);
     return true;
 }
 
@@ -126,14 +143,12 @@ stock bool:CheckPoint_Destroy(CheckPoint:checkpoint)
 
 stock bool:CheckPoint_ShowForPlayer(playerid, CheckPoint:checkpoint)
 {
-    if(!LIST_contains_val(cp@CheckPointList, _:checkpoint))
-    {
+    if(!CheckPoint_IsValid(checkpoint))
         return false;
-    }
-    if(LIST_contains_val(cp@PlayerCheckPointList[playerid], _:checkpoint))
-    {
+
+    if(CheckPoint_IsShownForPlayer(playerid, checkpoint))
         return false;
-    }
+
     new STREAMER_TAG_AREA:area = STREAMER_TAG_AREA:checkpoint, STREAMER_TAG_OBJECT:object[2], STREAMER_TAG_MAP_ICON:mapIcon;
     cp@CheckPoint_GetExtraId(area, object, mapIcon);
     Streamer_AppendArrayData(STREAMER_TYPE_AREA, area, E_STREAMER_PLAYER_ID, playerid);
@@ -160,14 +175,12 @@ static stock cp@CheckPoint_HideForPlayer(playerid, CheckPoint:checkpoint)
 
 stock bool:CheckPoint_HideForPlayer(playerid, CheckPoint:checkpoint)
 {
-    if(!LIST_contains_val(cp@CheckPointList, _:checkpoint))
-    {
+    if(!CheckPoint_IsValid(checkpoint))
         return false;
-    }
-    if(!LIST_contains_val(cp@PlayerCheckPointList[playerid], _:checkpoint))
-    {
+
+    if(!CheckPoint_IsShownForPlayer(playerid, checkpoint))
         return false;
-    }
+
     cp@CheckPoint_HideForPlayer(playerid, checkpoint);
     LIST_remove_val(cp@PlayerCheckPointList[playerid], _:checkpoint);
     return true;
@@ -179,13 +192,15 @@ stock bool:CheckPoint_HideForPlayer(playerid, CheckPoint:checkpoint)
     forward CheckPoint_OnPlayerEnter(playerid, CheckPoint:checkpoint);
     public OnPlayerEnterDynamicArea(playerid, STREAMER_TAG_AREA:areaid)
     {
-        if(LIST_contains_val(cp@CheckPointList, _:areaid))
+        if(CheckPoint_IsValid(CheckPoint:areaid))
         {
             CheckPoint_OnPlayerEnter(playerid, CheckPoint:areaid);
-            return;
+            return 1;
         }
         #if defined cp@OnPlayerEnterDynArea
-            cp@OnPlayerEnterDynArea(playerid, areaid);
+            return cp@OnPlayerEnterDynArea(playerid, areaid);
+        #else
+            return 1;
         #endif
     }
     #if defined _ALS_OnPlayerEnterDynArea
@@ -209,7 +224,9 @@ public OnPlayerDisconnect(playerid, reason)
     }
     LIST_clear(cp@PlayerCheckPointList[playerid]);
     #if defined cp@OnPlayerDisconnect
-        cp@OnPlayerDisconnect(playerid, reason);
+        return cp@OnPlayerDisconnect(playerid, reason);
+    #else
+        return 1;
     #endif
 }
 #if defined _ALS_OnPlayerDisconnect
@@ -220,6 +237,52 @@ public OnPlayerDisconnect(playerid, reason)
 #define OnPlayerDisconnect cp@OnPlayerDisconnect
 #if defined cp@OnPlayerDisconnect
     forward cp@OnPlayerDisconnect(playerid, reason);
+#endif
+
+//----------------------------------------------------------
+
+#if defined FILTERSCRIPT
+    public OnFilterScriptInit()
+    {
+        // Generate unique (more like random?) identifier for streamer extra id.
+        cp@CheckPointExtraId = E_STREAMER_CUSTOM(random(2^31 - 1));
+
+        #if defined cp@OnFilterScriptInit
+            return cp@OnFilterScriptInit();
+        #else
+            return 1;
+        #endif
+    }
+    #if defined _ALS_OnFilterScriptInit
+        #undef OnFilterScriptInit
+    #else
+        #define _ALS_OnFilterScriptInit
+    #endif
+    #define OnFilterScriptInit cp@OnFilterScriptInit
+    #if defined cp@OnFilterScriptInit
+        forward cp@OnFilterScriptInit();
+    #endif
+#else
+    public OnGameModeInit()
+    {
+        // Generate unique (more like random?) identifier for streamer extra id.
+        cp@CheckPointExtraId = E_STREAMER_CUSTOM(random(2^31 - 1));
+
+        #if defined cp@OnGameModeInit
+            return cp@OnGameModeInit();
+        #else
+            return 1;
+        #endif
+    }
+    #if defined _ALS_OnGameModeInit
+        #undef OnGameModeInit
+    #else
+        #define _ALS_OnGameModeInit
+    #endif
+    #define OnGameModeInit cp@OnGameModeInit
+    #if defined cp@OnGameModeInit
+        forward cp@OnGameModeInit();
+    #endif
 #endif
 
 //----------------------------------------------------------

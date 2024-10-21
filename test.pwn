@@ -38,6 +38,7 @@ public OnGameModeInit()
     {
         CheckPointData[i][CheckPointId] = CheckPoint_Create(CheckPointData[i][Object], CheckPointData[i][MapIcon], CheckPointData[i][MinX], CheckPointData[i][MinY], CheckPointData[i][MaxX], CheckPointData[i][MaxY], CheckPointData[i][Z]);
     }
+    return 1;
 }
 
 public OnGameModeExit()
@@ -46,6 +47,7 @@ public OnGameModeExit()
     {
         CheckPoint_Destroy(CheckPointData[i][CheckPointId]);
     }
+    return 1;
 }
 
 public OnPlayerSpawn(playerid)
@@ -60,8 +62,9 @@ public OnPlayerSpawn(playerid)
 
     for(new i; i < sizeof CheckPointData; i++)
     {
-        //CheckPoint_ShowForPlayer(playerid, CheckPointData[i][CheckPointId]);
+        CheckPoint_ShowForPlayer(playerid, CheckPointData[i][CheckPointId]);
     }
+    return 1;
 }
 
 public OnPlayerCommandText(playerid, cmdtext[])
@@ -127,4 +130,5 @@ public CheckPoint_OnPlayerEnter(playerid, CheckPoint:checkpoint)
     SendClientMessage(playerid, -1, message);
 
     CheckPoint_HideForPlayer(playerid, checkpoint);
+    return 1;
 }
